@@ -7,7 +7,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
-//1.45.25
+//1.55.25
 
 /*
  * @title DSCEngine
@@ -34,6 +34,7 @@ contract DSCEngine is ReentrancyGuard {
     error DSCEngine__TokenNotAllowed();
     error DSCEngine__TransferFailed();
     error DSCEngine__BreakHealthFactor(uint256 healthFactor);
+    error DSCEngine__MintFailed();
 
     //STATE VARIABLES
     uint256 private constant ADDITIONAL_FEED_PRECISION = 1e10;
@@ -77,6 +78,7 @@ contract DSCEngine is ReentrancyGuard {
             s_priceFeeds[tokenAddresses[i]] = priceFeedAddresses[i];
             s_collateralTokens.push(tokenAddresses[i]);
         }
+        // we set the DSC contract as immutable at the constructor
         i_dsc = DecentralizedStableCoin(dscAddress);
     }
 
@@ -115,6 +117,10 @@ contract DSCEngine is ReentrancyGuard {
         // Check if the collateral value > DSC amount
         s_DSCMinted[msg.sender] += amountDscToMint;
         _revertIfHealthFactorIsBroken(msg.sender);
+        bool minted = i_dsc.mint(msg.sender, amountDscToMint);
+        if (!minted) {
+            revert DSCEngine__MintFailed();
+        }
     }
 
     function burnDsc() external {}
